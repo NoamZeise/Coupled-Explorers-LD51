@@ -1,17 +1,16 @@
+use std::time::Instant;
 
-use sdl2::event::{Event, WindowEvent};
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
-use sdl2::image;
-use sdl2::video::Window;
-use sdl2::render::Canvas;
+use sdl2::{
+    event::Event,
+    keyboard::Keycode,
+    pixels::Color,
+    video::Window,
+    image,
+    render::Canvas,
+};
 
 use geometry::Vec2;
-use sdl_test::{TextureManager, FontManager, map, camera::Camera};
-use sdl_test::input::Typing;
-
-use std::time::Instant;
-use std::path::Path;
+use LD51::{TextureManager, camera::Camera, input::Input, game::Game};
 
 pub fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
@@ -20,7 +19,7 @@ pub fn main() -> Result<(), String> {
 
     let mut cam = Camera::new(
         geometry::Rect::new(0.0, 0.0, 240.0, 160.0),
-        geometry::Vec2::new(240.0, 160.0)
+        geometry::Vec2::new(720.0, 480.0)
     );
     
     let window = video_subsystem
@@ -41,18 +40,17 @@ pub fn main() -> Result<(), String> {
 
     let texture_creator = canvas.texture_creator();
     let mut texture_manager = TextureManager::new(&texture_creator);
-    let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-    let mut font_manager = FontManager::new(&ttf_context, &texture_creator)?;
+    //let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
+    //let mut font_manager = FontManager::new(&ttf_context, &texture_creator)?;
+    //let mono_font = font_manager.load_font(Path::new("textures/FiraCode-Light.ttf"))?;
 
-    let mono_font = font_manager.load_font(Path::new("textures/FiraCode-Light.ttf"))?;
-
-    let mut map = map::Map::new("test-resources/test.tmx", &mut texture_manager).unwrap();
+    let mut game = Game::new(&mut texture_manager)?;
     
     canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
     
 
     let mut event_pump = sdl_context.event_pump()?;
-    let mut typing = Typing::new();
+    let mut input = Input::new();
     let mut prev_frame : f64 = 0.0;
     'running: loop {
         let start_time = Instant::now();
@@ -61,38 +59,46 @@ pub fn main() -> Result<(), String> {
                 Event::Quit { .. } | Event::KeyDown {  keycode: Some(Keycode::Escape), ..} => break 'running,
                 _ => { }
             }
-            typing.handle_event(&event);
+            input.handle_event(&event);
             handle_event(&event, &mut canvas, &mut cam)?;
         }
         
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
-        
-        map.draw(&mut cam);
-        
+
+        game.draw(&mut cam);
+ 
         for d in cam.drain_draws() {
             texture_manager.draw(&mut canvas, d)?;
         }
+        for r in cam.drain_rects() {
+            texture_manager.draw_rect(&mut canvas, r.rect, r.colour)?;
+        }
       
         canvas.present();
+
+        game.update(&prev_frame, &input);
         
         let mut pos = cam.get_offset();
         const SPEED : f64 = 500.0;
-        if typing.left {
+        if input.cam_left {
             pos.x -= SPEED * prev_frame;
         }
-        if typing.right {
+        if input.cam_right {
             pos.x += SPEED * prev_frame;
         }
-        if typing.up {
+        if input.cam_up {
             pos.y -= SPEED * prev_frame;
         }
-        if typing.down {
+        if input.cam_down {
             pos.y += SPEED * prev_frame;
         }
         cam.set_offset(pos);
-        
+ 
         prev_frame = start_time.elapsed().as_secs_f64();
+        if prev_frame > 0.1 {
+            prev_frame = 0.0;
+        }
 
         //println!("prev frame: {} fps", 1.0/prev_frame);
     }

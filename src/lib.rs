@@ -11,8 +11,8 @@ use std::clone::Clone;
 
 pub mod input;
 use geometry::*;
-pub mod map;
 pub mod camera;
+pub mod game;
 
 trait RectConversion {
     fn new_from_sdl_rect(sdl_rect : &sdl2::rect::Rect) -> Self;
@@ -74,7 +74,9 @@ impl Colour {
     pub fn white() -> Colour {
         Self::new(255, 255, 255, 255)
     }
-
+    pub fn black() -> Colour {
+        Self::new(0, 0, 0, 255)
+    }
     pub fn to_sdl2_colour(&self) -> Color {
         Color {
             r: self.r,
@@ -87,11 +89,11 @@ impl Colour {
 
 #[derive(Clone, Copy)]
 pub struct GameObject {
-    texture: resource::Texture,
-    rect: Rect,
-    tex_rect: Rect,
-    parallax: Vec2,
-    colour: Colour
+    pub texture: resource::Texture,
+    pub rect: Rect,
+    pub tex_rect: Rect,
+    pub parallax: Vec2,
+    pub colour: Colour
 }
 
 impl GameObject {
@@ -153,15 +155,14 @@ impl<'a, T> TextureManager<'a, T> {
         }
     }
 /// load a texture to memory and get a `resource::Texture` object that references it
-    pub fn load(&mut self, path : &Path) -> Result<resource::Texture, String> {
-        let path_as_string = path.to_string_lossy().to_string();
-        let tex_index = match self.loaded_texture_paths.contains_key(&path_as_string) {
-            true => self.loaded_texture_paths[&path_as_string],
+    pub fn load(&mut self, path : &str) -> Result<resource::Texture, String> {
+        let tex_index = match self.loaded_texture_paths.contains_key(path) {
+            true => self.loaded_texture_paths[path],
             false => {
                 self.textures.push(self.texture_creator.load_texture(path)?);
-                self.loaded_texture_paths.insert(path_as_string, self.textures.len() - 1);
+                self.loaded_texture_paths.insert(path.to_string(), self.textures.len() - 1);
 
-                println!("loaded: {}", path.to_str().unwrap());
+                println!("loaded: {}", path);
 
                 self.textures.len() - 1
             },
@@ -183,15 +184,30 @@ impl<'a, T> TextureManager<'a, T> {
             tex_draw.colour.b
         );
         self.textures[tex_draw.tex.id].set_alpha_mod(tex_draw.colour.a);
-        canvas.copy(
+        let mut h_f = false;
+        let mut v_f = false;
+        let mut t_r = tex_draw.tex_rect;
+        if tex_draw.tex_rect.w < 0.0 {
+            h_f = true;
+            t_r.w *= -1.0;
+        }
+        if tex_draw.tex_rect.h < 0.0 {
+            v_f = true;
+            t_r.h *= -1.0;
+        }
+        canvas.copy_ex(
             &self.textures[tex_draw.tex.id],
-            tex_draw.tex_rect.to_sdl_rect(),
-            tex_draw.draw_rect.to_sdl_rect()
+            t_r.to_sdl_rect(),
+            tex_draw.draw_rect.to_sdl_rect(),
+            0.0,
+            None,
+            h_f,
+            v_f,
         )
     }
 
-    pub fn draw_rect(&self, canvas : &mut Canvas<Window>, rect : &geometry::Rect, colour : &geometry::Rect) -> Result<(), String> {
-        canvas.set_draw_color(Color::RGBA(colour.x as u8, colour.y as u8, colour.w as u8, colour.h as u8));
+    pub fn draw_rect(&self, canvas : &mut Canvas<Window>, rect : geometry::Rect, colour :  Colour) -> Result<(), String> {
+        canvas.set_draw_color(Color::RGBA(colour.r, colour.g, colour.b, colour.a));
         canvas.fill_rect(rect.to_sdl_rect())?;
         Ok(())
     }

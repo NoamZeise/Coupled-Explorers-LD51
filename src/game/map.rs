@@ -103,7 +103,7 @@ impl Map {
     pub fn draw(&self, cam: &mut Camera) {
         for l in self.layers.iter() {
             for t in l.tile_draws.iter() {
-                cam.add_cam_space(t);
+                cam.draw(t);
             }
         }
     }
@@ -114,7 +114,7 @@ impl Map {
         self.tiles[0].rect.w = self.tiled_map.tile_width as f64;
         self.tiles[0].rect.h = self.tiled_map.tile_height as f64;
         for ts in self.tiled_map.tilesets.iter() {
-            load_tileset(&mut self.tiles, ts, tex_manager.load(&Path::new(&ts.image_path))?)?;
+            load_tileset(&mut self.tiles, ts, tex_manager.load(&ts.image_path)?)?;
         }
         Ok(())
     }

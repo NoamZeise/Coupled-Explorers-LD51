@@ -1,4 +1,5 @@
 use std::ops;
+use std::fmt;
 
 ///  A rectangle where x,y represents the coord of the upper left corner
 #[derive(Clone, Copy)]
@@ -56,6 +57,11 @@ impl Rect {
         self.y          < vec.y &&
         self.y + self.h > vec.y
     }
+
+    pub fn set_pos(&mut self, vec: &Vec2) {
+        self.x = vec.x;
+        self.y = vec.y;
+    }
 }
 
 /// A 2D Vector
@@ -75,5 +81,31 @@ impl ops::Add<Vec2> for Vec2 {
     type Output = Vec2;
     fn add(self, other : Vec2) -> Vec2 {
         Vec2::new(self.x + other.x, self.y + other.y)
+    }
+}
+
+impl ops::AddAssign for Vec2 {
+    fn add_assign(&mut self, other : Self) {
+        self.x += other.x;
+        self.y += other.y;
+    }
+}
+
+impl ops::Mul<f64> for Vec2 {
+    type Output = Vec2;
+    fn mul(self, other : f64) -> Vec2 {
+        Vec2::new(self.x * other, self.y * other)
+    }
+}
+impl ops::Mul<&f64> for Vec2 {
+    type Output = Vec2;
+    fn mul(self, other : &f64) -> Vec2 {
+        Vec2::new(self.x * other, self.y * other)
+    }
+}
+
+impl fmt::Display for Vec2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "x: {}  y: {}", self.x, self.y)
     }
 }

@@ -1,12 +1,18 @@
 use geometry::*;
-use crate::{TextureDraw, GameObject, TextDraw};
+use crate::{TextureDraw, GameObject, Colour};
 use std::vec::Drain;
+
+pub struct RectDraw {
+    pub rect: Rect,
+    pub colour: Colour,
+}
 
 pub struct Camera {
     rect: Rect,
     window_size: Vec2,
     size_ratio: Vec2,
     draws : Vec<TextureDraw>,
+    rects : Vec<RectDraw>,
 }
 
 impl Camera {
@@ -15,6 +21,7 @@ impl Camera {
             rect,
             window_size,
             draws: Vec::new(),
+            rects: Vec::new(),
             size_ratio: Vec2::new(0.0, 0.0),
         };
         cam.update_size_ratio();
@@ -25,14 +32,18 @@ impl Camera {
     pub fn drain_draws(&mut self) -> Drain<TextureDraw> { 
         self.draws.drain(..)
     }
+
+    pub fn drain_rects(&mut self) -> Drain<RectDraw> { 
+        self.rects.drain(..)
+    }
     
-    pub fn add_cam_space(&mut self, game_obj: &GameObject) {
+    pub fn draw(&mut self, game_obj: &GameObject) {
         self.draws.push(
             TextureDraw::new(
                 game_obj.texture,
                 Rect::new(
-                    ((game_obj.rect.x) - (self.rect.x * game_obj.parallax.x)) / self.size_ratio.x,
-                    ((game_obj.rect.y) - (self.rect.y * game_obj.parallax.y)) / self.size_ratio.y,
+                    (game_obj.rect.x - (self.rect.x * game_obj.parallax.x)) / self.size_ratio.x,
+                    (game_obj.rect.y - (self.rect.y * game_obj.parallax.y)) / self.size_ratio.y,
                     game_obj.rect.w / self.size_ratio.x,
                     game_obj.rect.h / self.size_ratio.y,
                 ),
@@ -40,6 +51,20 @@ impl Camera {
                 game_obj.colour,
             )
         );
+    }
+
+    pub fn draw_rect(&mut self, rect: Rect, colour: Colour) {
+        self.rects.push(
+            RectDraw {
+                rect: Rect::new(
+                    (rect.x - self.rect.x) / self.size_ratio.x,
+                    (rect.y - self.rect.y) / self.size_ratio.y,
+                    rect.w / self.size_ratio.x,
+                    rect.h / self.size_ratio.y,
+                ),
+                colour,
+            }
+        )
     }
 
     pub fn get_offset(&self) -> Vec2 {

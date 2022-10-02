@@ -4,6 +4,11 @@ game made in 48 hours for the Compo of Ludum Dare 51
 * [ld submission](https://ldjam.com/events/ludum-dare/51/coupled-explorers)
 * [itch page](https://noamzeise.itch.io/coupled-explorers)
 
+## dependancies
+
+* [sdl2](https://www.libsdl.org/) + [rust bindings](https://crates.io/crates/sdl2)
+* [quick_xml](https://crates.io/crates/quick-xml)
+
 ## build
 
 * get [rust and cargo](https://www.rust-lang.org/tools/install) if you dont have them

@@ -1,5 +1,5 @@
 [package]
-name = "LD51"
+name = "coupled_explorers"
 version = "0.1.0"
 edition = "2021"
 

@@ -1,0 +1,16 @@
+
+controls             buttons
+
+left/right           -> left arrow/right arrow   or  A/D
+jump                 ->  Z / ,
+restart lvl          -> R
+Window Size Increase ->  Plus/Equals
+Window Size Decrease ->  Minus
+
+
+
+secret debug controls:
+------------
+switch characters -> F1
+next level        -> F2
+prev level        -> F3

@@ -40,6 +40,10 @@ impl Rect {
         Rect { x: smallest.x, y: smallest.y, w: dim.x, h: dim.y }
     }
 
+    pub fn top_left(&self) -> Vec2 {
+        Vec2::new(self.x, self.y)
+    }
+
     pub fn centre(&self) -> Vec2 {
         Vec2::new(self.x + self.w/2.0, self.y + self.h/2.0)
     }
@@ -61,6 +65,30 @@ impl Rect {
     pub fn set_pos(&mut self, vec: &Vec2) {
         self.x = vec.x;
         self.y = vec.y;
+    }
+
+    pub fn floor(&self) -> Rect {
+        Rect::new(
+            self.x.floor(),
+            self.y.floor(),
+            self.w.floor(),
+            self.h.floor(),
+            )
+    }
+    pub fn round_pos(&self) -> Rect {
+        Rect::new(
+            self.x.round(),
+            self.y.round(),
+            self.w,
+            self.h
+        )
+    }
+}
+
+impl ops::AddAssign<Vec2> for Rect {
+    fn add_assign(&mut self, other : Vec2) {
+        self.x += other.x;
+        self.y += other.y;
     }
 }
 
@@ -91,6 +119,13 @@ impl ops::AddAssign for Vec2 {
     }
 }
 
+impl ops::Sub<Vec2> for Vec2 {
+    type Output = Vec2;
+    fn sub(self, other : Vec2) -> Vec2 {
+        Vec2::new(self.x - other.x, self.y - other.y)
+    }
+}
+
 impl ops::Mul<f64> for Vec2 {
     type Output = Vec2;
     fn mul(self, other : f64) -> Vec2 {
@@ -101,6 +136,12 @@ impl ops::Mul<&f64> for Vec2 {
     type Output = Vec2;
     fn mul(self, other : &f64) -> Vec2 {
         Vec2::new(self.x * other, self.y * other)
+    }
+}
+impl ops::Div<f64> for Vec2 {
+    type Output = Vec2;
+    fn div(self, other : f64) -> Vec2 {
+        Vec2::new(self.x / other, self.y / other)
     }
 }
 

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use tiled;
+use tiled::{self, Properties};
 use crate::{TextDraw, GameObject, resource, camera::Camera, Colour};
 use crate::{TextureManager, resource::Texture};
 use sdl2::render::Canvas;
@@ -80,8 +80,20 @@ impl Layer {
     }
 }
 
+pub fn check_bool(k: &str, props: &Properties) -> bool {
+    props.booleans.contains_key(k) && props.booleans[k]
+}
+
+pub fn get_int(k: &str, props: &Properties, default: i64) -> i64{
+    if props.integers.contains_key(k) {
+        props.integers[k]
+    } else { 
+        default
+    }
+}
+
 pub struct Map {
-    tiled_map: tiled::Map,
+    pub tiled_map: tiled::Map,
     tiles : Vec<Tile>,
     layers : Vec<Layer>,
 }

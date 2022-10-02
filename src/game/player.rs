@@ -1,34 +1,46 @@
 use super::helper::*;
 use super::physics::*;
 
-const ACC: Vec2 = Vec2 { x: 1000.0, y: 700.0 };
-const MAX_V: Vec2 = Vec2 { x: 150.0, y: 600.0 };
-const START_V : Vec2 = Vec2 { x: 0.0, y: -240.0  };
+use sdl2::mixer::Music;
+
+//const ACC: Vec2 = Vec2 { x: 1000.0, y: 700.0 };
+//const MAX_V: Vec2 = Vec2 { x: 150.0, y: 600.0 };
+//const START_V : Vec2 = Vec2 { x: 0.0, y: -240.0  };
 
 pub struct Player {
-    go: GameObject,
+    pub go: GameObject,
     pr: PhysRect,
     acc: Vec2,
     jump: f64,
     frict: f64,
+    jumped: bool,
 }
 
 impl  Player {
-    pub fn new(tex: Texture, acc: Vec2, jump: f64, frict: f64) -> Self{
-        let mut go = GameObject::new_from_tex(tex
+    pub fn new(tex: Texture,
+               acc: Vec2,
+               jump: f64,
+               frict: f64,
+               max_v: Vec2,
+               weight: f64,
+    ) -> Self{
+        let go = GameObject::new_from_tex(tex
         );
-        go.rect.x = 40.0;
-        go.rect.y = 30.0;
         Player{
             go,
             pr: PhysRect::new(
                 go.rect,
-                MAX_V,
+                max_v,
+                weight
             ),
             acc,
             jump,
             frict,
+            jumped: false,
         }
+    }
+    pub fn jumped(&self) -> bool {
+        self.jumped
     }
     pub fn update(&mut self, time: &f64, input: &Input) {
         self.controls(input);
@@ -75,6 +87,9 @@ impl Player {
         if input.a && self.pr.y_collision {
             self.pr.a.y = 0.0;
             self.pr.v.y = self.jump;
+            self.jumped = true;
+        } else {
+            self.jumped = false;
         }
         if !input.a && self.pr.v.y < 0.0 {
             self.pr.a.y *= self.frict;

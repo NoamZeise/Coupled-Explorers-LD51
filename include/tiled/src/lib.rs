@@ -169,6 +169,7 @@ pub struct MapMetadata {
 }
 
 pub struct Map {
+    pub rect: Rect,
     pub width : u32,
     pub height : u32,
     pub tile_width : u32,
@@ -203,6 +204,7 @@ impl Map {
 
     fn blank_map(path: String) -> Map {
         Map {
+            rect : Rect::new(0.0, 0.0, 0.0, 0.0),
             width : 0,
             height : 0,
             tile_width : 0,
@@ -263,6 +265,11 @@ impl Map {
         let mut reader = Reader::from_str(&map_file_text);
         let mut map = Self::blank_map(path.to_string());
         parse_xml(&mut map, &mut reader)?;
+        map.rect = Rect::new(
+            0.0, 0.0,
+            (map.width * map.tile_width) as f64,
+            (map.height * map.tile_height) as f64
+        );
         Ok(map)
     }
 }

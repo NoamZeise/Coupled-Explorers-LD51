@@ -7,38 +7,63 @@ pub struct RectDraw {
     pub colour: Colour,
 }
 
+pub enum CamDraw {
+    Rect(RectDraw),
+    Tex(TextureDraw),
+}
+
 pub struct Camera {
+    target: Vec2,
     rect: Rect,
+    true_rect: Rect,
     window_size: Vec2,
     size_ratio: Vec2,
-    draws : Vec<TextureDraw>,
-    rects : Vec<RectDraw>,
+    draws : Vec<CamDraw>,
+    speed : f64,
+    done: bool,
 }
 
 impl Camera {
     pub fn new(rect: Rect, window_size: Vec2) -> Camera {
         let mut cam = Camera {
             rect,
+            target: Vec2::new(rect.x, rect.y),
             window_size,
             draws: Vec::new(),
-            rects: Vec::new(),
             size_ratio: Vec2::new(0.0, 0.0),
+            speed: 6.0,
+            true_rect: rect,
+            done: true,
         };
         cam.update_size_ratio();
         cam
     }
 
-    pub fn drain_draws(&mut self) -> Drain<TextureDraw> { 
-        self.draws.drain(..)
+    pub fn done(&self) -> bool {
+        self.done
     }
 
-    pub fn drain_rects(&mut self) -> Drain<RectDraw> { 
-        self.rects.drain(..)
+    pub fn update(&mut self, time: &f64) {
+        let vec_to_target = self.target - self.true_rect.top_left();
+        let change = vec_to_target * self.speed * time;
+        if vec_to_target.x.abs() < 0.5 && vec_to_target.y.abs() < 0.5 {
+            self.true_rect.x = self.target.x;
+            self.true_rect.y = self.target.y;
+            self.done = true;
+        } else {
+            self.done = false;
+            self.true_rect += change;
+        }
+        self.rect = self.true_rect.round_pos();
+    }
+
+    pub fn drain_draws(&mut self) -> Drain<CamDraw> { 
+        self.draws.drain(..)
     }
     
     pub fn draw(&mut self, game_obj: &GameObject) {
         self.draws.push(
-            TextureDraw::new(
+            CamDraw::Tex(TextureDraw::new(
                 game_obj.texture,
                 Rect::new(
                     (game_obj.rect.x - (self.rect.x * game_obj.parallax.x)) / self.size_ratio.x,
@@ -49,12 +74,12 @@ impl Camera {
                 game_obj.tex_rect,
                 game_obj.colour,
             )
-        );
+        ));
     }
 
     pub fn draw_rect(&mut self, rect: Rect, colour: Colour) {
-        self.rects.push(
-            RectDraw {
+        self.draws.push(
+            CamDraw::Rect(RectDraw {
                 rect: Rect::new(
                     (rect.x - self.rect.x) / self.size_ratio.x,
                     (rect.y - self.rect.y) / self.size_ratio.y,
@@ -63,7 +88,21 @@ impl Camera {
                 ),
                 colour,
             }
-        )
+        ));
+    }
+
+    pub fn draw_rect_static(&mut self, rect: Rect, colour: Colour) {
+        self.draws.push(
+            CamDraw::Rect(RectDraw {
+                rect: Rect::new(
+                    rect.x / self.size_ratio.x,
+                    rect.y / self.size_ratio.y,
+                    rect.w / self.size_ratio.x,
+                    rect.h / self.size_ratio.y,
+                ),
+                colour,
+            }
+        ));
     }
 
     pub fn get_offset(&self) -> Vec2 {
@@ -92,21 +131,34 @@ impl Camera {
         }
     }
 
+    fn calc_vec2_off(&self, p: Vec2, lim: Rect) -> Vec2 {
+        Vec2::new(
+            Self::calc_offset(
+                self.rect.w,
+                p.x - (self.rect.w/2.0),
+                lim.x - (self.rect.w/2.0),
+                lim.w,
+            ),
+            Self::calc_offset(
+                self.rect.h,
+                p.y - (self.rect.h/2.0),
+                lim.y - (self.rect.h/2.0),
+                lim.h
+            )
+        )
+    }
+
     pub fn centre_on_pos(&mut self, p: Vec2, lim: Rect) {
-        let x = Self::calc_offset(
-            self.rect.w,
-            p.x - (self.rect.w/2.0),
-            lim.x - (self.rect.w/2.0),
-            lim.w,
-        );
-        let y = Self::calc_offset(
-            self.rect.h,
-            p.y - (self.rect.h/2.0),
-            lim.y - (self.rect.h/2.0),
-            lim.h
-        );
-        self.rect.x = x;
-        self.rect.y = y;
+        let v = self.calc_vec2_off(p, lim);
+        self.rect.x = v.x;
+        self.rect.y = v.y;
+        self.target.x = v.x;
+        self.target.y = v.y;
+    }
+    pub fn target_centre_pos(&mut self, p: Vec2, lim: Rect) {
+        let v = self.calc_vec2_off(p, lim);
+        self.target.x = v.x;
+        self.target.y = v.y;
     }
 
     pub fn get_window_size(&self) -> Vec2 {

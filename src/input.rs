@@ -34,11 +34,10 @@ pub struct Input {
     pub right     : bool,
     pub a         : bool,
     pub b         : bool,
-    pub cam_up        : bool,
-    pub cam_down      : bool,
-    pub cam_left      : bool,
-    pub cam_right     : bool,
-    pub debug_1 : bool,
+    pub restart: bool,
+    pub debug_1   : bool,
+    pub debug_2   : bool,
+    pub debug_3   : bool,
     pub mouse     : Mouse,
 }
 
@@ -52,12 +51,11 @@ impl Input {
             right     : false,
             a         : false,
             b         : false,
+            restart : false,
             mouse     : Mouse::new(),
-            cam_up : false,
-            cam_down : false,
-            cam_left : false,
-            cam_right : false,
             debug_1: false,
+            debug_2: false,
+            debug_3: false,
         }
     }
 
@@ -94,11 +92,10 @@ impl Input {
                     Scancode::Right | Scancode::D => self.right = key_down,
                     Scancode::Z | Scancode::Comma => self.a = key_down,
                     Scancode::X | Scancode::Period => self.b = key_down,
-                    Scancode::Num8 => self.cam_up = key_down,
-                    Scancode::Num4 => self.cam_left = key_down,
-                    Scancode::Num2 => self.cam_down = key_down,
-                    Scancode::Num6 => self.cam_right = key_down,
+                    Scancode::R => self.restart = key_down,
                     Scancode::F1 => self.debug_1 = key_down,
+                    Scancode::F2 => self.debug_2 = key_down,
+                    Scancode::F3 => self.debug_3 = key_down,
                     _ => {}
                 }
             }

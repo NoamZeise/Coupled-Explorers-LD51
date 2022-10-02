@@ -7,15 +7,34 @@ use sdl2::{
     video::Window,
     image,
     render::Canvas,
+    mixer::{InitFlag, AUDIO_S16LSB, DEFAULT_CHANNELS},
 };
 
 use geometry::Vec2;
-use LD51::{TextureManager, camera::Camera, input::Input, game::Game};
+use coupled_explorers::{TextureManager, camera::*, input::Input, game::Game, game::Players, GameObject};
 
 pub fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let _image_context = image::init(image::InitFlag::PNG);
+
+    let _audio = sdl_context.audio()?;
+    let _mixer_context =
+        sdl2::mixer::init(InitFlag::OGG)?;
+    
+    
+    sdl2::mixer::open_audio(44_100, AUDIO_S16LSB, DEFAULT_CHANNELS, 1_024)?;
+    sdl2::mixer::allocate_channels(4);
+    let music = sdl2::mixer::Music::from_file("audio/main.wav")?;
+    
+    let mut heavy_jmp = sdl2::mixer::Chunk::from_file("audio/heavy_jump.wav")?;
+    heavy_jmp.set_volume(50);
+    let mut light_jmp = sdl2::mixer::Chunk::from_file("audio/light_jump.wav")?;
+    light_jmp.set_volume(50);
+    let mut death_sfx = sdl2::mixer::Chunk::from_file("audio/death.wav")?;
+    death_sfx.set_volume(50);
+    
+    music.play(-1)?;
 
     let mut cam = Camera::new(
         geometry::Rect::new(0.0, 0.0, 240.0, 160.0),
@@ -40,15 +59,11 @@ pub fn main() -> Result<(), String> {
 
     let texture_creator = canvas.texture_creator();
     let mut texture_manager = TextureManager::new(&texture_creator);
-    //let ttf_context = sdl2::ttf::init().map_err(|e| e.to_string())?;
-    //let mut font_manager = FontManager::new(&ttf_context, &texture_creator)?;
-    //let mono_font = font_manager.load_font(Path::new("textures/FiraCode-Light.ttf"))?;
-
+    let end_screen = GameObject::new_from_tex(texture_manager.load("textures/end.png")?);
     let mut game = Game::new(&mut texture_manager)?;
     
     canvas.set_blend_mode(sdl2::render::BlendMode::Blend);
     
-
     let mut event_pump = sdl_context.event_pump()?;
     let mut input = Input::new();
     let mut prev_frame : f64 = 0.0;
@@ -66,34 +81,35 @@ pub fn main() -> Result<(), String> {
         canvas.set_draw_color(Color::RGB(255, 255, 255));
         canvas.clear();
 
-        game.draw(&mut cam);
- 
-        for d in cam.drain_draws() {
-            texture_manager.draw(&mut canvas, d)?;
+        if !game.game_complete() {
+            game.draw(&mut cam);
+        } else {
+            cam.draw(&end_screen);
         }
-        for r in cam.drain_rects() {
-            texture_manager.draw_rect(&mut canvas, r.rect, r.colour)?;
+        for d in cam.drain_draws() {
+            match d {
+                CamDraw::Tex(t)  => texture_manager.draw(&mut canvas, t)?,
+                CamDraw::Rect(r) => texture_manager.draw_rect(&mut canvas, r.rect, r.colour)?,
+            }
         }
       
         canvas.present();
 
-        game.update(&prev_frame, &input);
-        
-        let mut pos = cam.get_offset();
-        const SPEED : f64 = 500.0;
-        if input.cam_left {
-            pos.x -= SPEED * prev_frame;
+        if !game.game_complete() {
+            game.update(&prev_frame, &input);
+            match game.jumped() {
+                Some(Players::Quick) => {
+                    sdl2::mixer::Channel::all().play(&light_jmp, 0);
+                },
+                Some(Players::Heavy) => {
+                    sdl2::mixer::Channel::all().play(&heavy_jmp, 0);
+                }
+                _ => (),
+            }
+            cam.update(&prev_frame);
+        } else {
+            cam.set_offset(Vec2::new(0.0, 0.0));
         }
-        if input.cam_right {
-            pos.x += SPEED * prev_frame;
-        }
-        if input.cam_up {
-            pos.y -= SPEED * prev_frame;
-        }
-        if input.cam_down {
-            pos.y += SPEED * prev_frame;
-        }
-        cam.set_offset(pos);
  
         prev_frame = start_time.elapsed().as_secs_f64();
         if prev_frame > 0.1 {
@@ -118,8 +134,8 @@ fn handle_event(event: &Event, canvas: &mut Canvas<Window>, cam: &mut Camera) ->
                 cs.x *= 2.0;
                 cs.y *= 2.0;
             } else {
-                cs.x += cam.get_view_size().x/2.0;
-                cs.y += cam.get_view_size().y/2.0;
+                cs.x += cam.get_view_size().x;
+                cs.y += cam.get_view_size().y;
             }
             set_win_size(canvas, cam, cs)?;
         },
@@ -132,8 +148,8 @@ fn handle_event(event: &Event, canvas: &mut Canvas<Window>, cam: &mut Camera) ->
                 cs.x /= 2.0;
                 cs.y /= 2.0;
             } else {
-                cs.x -= cam.get_view_size().x/2.0;
-                cs.y -= cam.get_view_size().y/2.0;
+                cs.x -= cam.get_view_size().x;
+                cs.y -= cam.get_view_size().y;
             }
             set_win_size(canvas, cam, cs)?;
         },

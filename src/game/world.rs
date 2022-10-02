@@ -3,7 +3,8 @@ use crate::Colour;
 use super::physics::*;
 use geometry::*;
 
-const WIDTH: f64 = 3.0;
+const WIDTH: f64 = 10.0;
+const BRITTLE_COLOUR: Colour = Colour { r: 91, g: 88, b: 24, a: 255 };
 
 pub fn get_brittle(rect: Rect) -> Vec<BrittleObs> {
     let mut obs = Vec::new();
@@ -42,8 +43,10 @@ pub struct Nested {
 
 impl Nested {
     pub fn new(rect: Rect) ->  Self {
+        let mut pr = PhysRect::new_from_rect(rect);
+        pr.colour = BRITTLE_COLOUR;
         Nested {
-            pr: PhysRect::new_from_rect(rect),
+            pr,
             col: None,
         }
     }
@@ -110,8 +113,8 @@ pub struct StaticObs {
 }
 
 impl StaticObs {
-    pub fn new(pr: PhysRect) -> Self {
-        let mut pr = pr;
+    pub fn new(r: Rect) -> Self {
+        let mut pr = PhysRect::new_from_rect(r);
         pr.colour = Colour::new(30, 50, 30, 255);
         Self {
             pr
@@ -134,10 +137,11 @@ pub struct GravObs {
 }
 
 impl GravObs {
-    pub fn new(phys: PhysRect) -> Self {
-        let mut phys = phys;
-        phys.a.y = 200.0;
-        phys.weight = 10.0;
+    pub fn new(r: Rect, w: f64) -> Self {
+        let mut phys = PhysRect::new_from_rect(r);
+        phys.a.y = 100.0;
+        phys.max_v.y = 400.0;
+        phys.weight = w;
         phys.friction = 0.95;
         phys.colour = Colour::new(50, 30, 30, 255);
         GravObs { pr: phys }
@@ -164,6 +168,7 @@ impl BrittleObs {
         phys.weight = 1.0;
         phys.friction = 0.95;
         phys.a.y = 10.0;
+        phys.colour = BRITTLE_COLOUR;
         Self { pr: phys }
     }
 }
@@ -187,10 +192,10 @@ pub struct DownObs {
 }
 
 impl DownObs {
-    pub fn new(phys: PhysRect) -> Self {
-        let mut phys = phys;
+    pub fn new(r: Rect) -> Self {
+        let mut phys = PhysRect::new_from_rect(r);
         //phys.a.y = 100.0;
-        phys.weight = 0.1;
+        phys.weight = 0.05;
         phys.friction = 0.95;
         Self { pr: phys }
     }
@@ -202,5 +207,17 @@ impl Phys for DownObs {
     }
     fn pr_im(&self) -> &PhysRect {
         &self.pr
+    }
+    fn pre_physics(&mut self) {
+        self.pr().v.y = if self.pr.y_collision {
+            160.0
+        } else {
+            0.0
+        };
+    } 
+    fn collision(&mut self, other: &PhysRect) {
+        if self.pr().last_update == LastUpdate::Y {
+            self.pr().y_collision = true;
+        }
     }
 }

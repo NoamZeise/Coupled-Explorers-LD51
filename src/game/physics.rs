@@ -24,21 +24,11 @@ pub struct PhysRect {
 }
 
 impl PhysRect {
-    pub fn new(rect: Rect, max_v: Vec2) -> Self {
-        PhysRect {
-            rect,
-            s: Vec2::new(rect.x, rect.y),
-            v: Vec2::new(0.0, 0.0),
-            a: Vec2::new(0.0, 0.0),
-            max_v,
-            prev_s: Vec2::new(rect.x, rect.y),
-            last_update: LastUpdate::X,
-            weight: 1.0,
-            x_collision: false,
-            y_collision: false,
-            friction : 1.0,
-            colour: Colour::black(),
-        }
+    pub fn new(rect: Rect, max_v: Vec2, weight: f64) -> Self {
+        let mut pr = PhysRect::new_from_rect(rect);
+        pr.max_v = max_v;
+        pr.weight = weight;
+        pr
     }
     pub fn new_from_rect(rect: Rect) -> Self {
         PhysRect {
@@ -82,12 +72,13 @@ impl PhysRect {
     }
 
     pub fn get_pixel_correct_rect(&self) -> Rect {
-        Rect::new(
-            self.rect.x.round(),
-            self.rect.y.round(),
-            self.rect.w,
-            self.rect.h
-        )
+        self.rect.round_pos()
+    }
+
+    pub fn set_pos(&mut self, pos: Vec2) {
+        self.s = pos;
+        self.rect.x = pos.x;
+        self.rect.y = pos.y;
     }
 }
 

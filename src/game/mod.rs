@@ -8,6 +8,8 @@ use helper::*;
 use player::Player;
 use physics::*;
 
+use world::*;
+
 enum Players {
     Quick,
     Heavy,
@@ -18,39 +20,43 @@ pub struct Game {
     heavy: Player,
     player: Players,
     objects: Vec<Box<dyn Phys>>,
+    nested: Vec<world::Nested>,
     prev_input: Input,
 }
 
 impl Game {
     pub fn new<'sdl, TexType>(tm: &'sdl mut TextureManager<TexType>) -> Result<Game, String> {
-        Ok(Game {
-            quick: Player::new(tm.load("textures/quick.png")?, Vec2::new(1000.0, 700.0), -240.0, 3.0),
-            heavy: Player::new(tm.load("textures/heavy.png")?, Vec2::new(800.0, 500.0), -160.0, 2.0),
-            objects: vec![
+        let objects : Vec<Box<dyn Phys>> = vec![
                 Box::new(world::StaticObs::new(
-                    PhysRect::new_from_rect(Rect::new(0.0, 10.0, 10.0, 200.0))
-                )),
-                Box::new(world::StaticObs::new(
-                    PhysRect::new_from_rect(Rect::new(10.0, 100.0, 130.0, 10.0))
+                    PhysRect::new_from_rect(Rect::new(10.0, 10.0, 10.0, 10.0))
                 )),
                 Box::new(world::GravObs::new(
                     PhysRect::new_from_rect(
                         Rect::new(100.0, 10.0, 20.0, 20.0)
                     )
-                )),
-                Box::new(world::BrittleObs::new(
-                    PhysRect::new_from_rect(
-                        Rect::new(200.0, 100.0, 20.0, 20.0)
-                    )
-                )),
+                )),/*
                 Box::new(world::DownObs::new(
                     PhysRect::new_from_rect(
                         Rect::new(160.0, 100.0, 20.0, 20.0)
 
                     )
-                ))],
+                ))*/];
+
+        //for o in get_brittle(Rect::new(10.0, 100.0, 1000.0, 10.0)) {
+        //    obstacles.push(Box::new(o));
+        //}
+
+        let nested = vec![
+            world::Nested::new(Rect::new(10.0, 100.0, 201.0, 10.0)),
+        ];
+        
+        Ok(Game {
+            quick: Player::new(tm.load("textures/quick.png")?, Vec2::new(1000.0, 700.0), -240.0, 3.0),
+            heavy: Player::new(tm.load("textures/heavy.png")?, Vec2::new(800.0, 500.0), -160.0, 2.0),
+            objects,
             player: Players::Heavy,
             prev_input: Input::new(),
+            nested,
         })
     }
     
@@ -64,50 +70,108 @@ impl Game {
         match self.player {
             Players::Quick => {
                 self.quick.update(time, input);
-                phys_update(&mut self.objects, time, &mut self.quick);
+                phys_update(&mut self.objects, time, &mut self.quick, &mut self.nested);
             },
             Players::Heavy => {
                 self.heavy.update(time, input);
-                phys_update(&mut self.objects, time, &mut self.heavy);
+                phys_update(&mut self.objects, time, &mut self.heavy, &mut self.nested);
             },
         }
         self.prev_input = *input;
+
+        println!("phys: {}     nest: {}", self.objects.len(), self.nested.len()); 
     }
 
     pub fn draw(&self, cam: &mut Camera) {
+        let p = match self.player {
+            Players::Quick => self.quick.pr_im().get_pixel_correct_rect(),
+            Players::Heavy => self.heavy.pr_im().get_pixel_correct_rect(),
+        };
+        let r = Rect::new(0.0, 0.0, 270.0, 160.0);
+        cam.centre_on_pos(p.centre(), r);
         self.quick.draw(cam);
         self.heavy.draw(cam);
         for o in self.objects.iter() {
             cam.draw_rect(o.pr_im().get_pixel_correct_rect(), o.pr_im().colour);
         }
+        for n in self.nested.iter() {
+            cam.draw_rect(n.pr_im().rect, n.pr_im().colour);
+        }
     }
 }
 
-fn phys_update(objs: &mut Vec<Box<dyn Phys>>, time: &f64, p: &mut Player) {
+fn phys_update(
+    objs: &mut Vec<Box<dyn Phys>>, time: &f64,
+    p: &mut Player,
+    nested: &mut Vec<Nested>,
+) {
     for o in objs.iter_mut() {
         o.pre_physics();
     }
+    for n in nested.iter_mut() {
+        n.pre_physics()
+    }
     p.pre_physics();
+    
     for o in objs.iter_mut() {
         o.phys_x(time);
     }
-    p.phys_x(time);
-    collision_checks(objs);
-    for o in objs.iter_mut() {
-        collision_update(o.as_mut(), p);
+    for n in nested.iter_mut() {
+        n.phys_x(time);
     }
+    p.phys_x(time);
+    
+    coll(objs, time, p, nested);
+    
     for o in objs.iter_mut() {
         o.phys_y(time);
     }
+    for n in nested.iter_mut() {
+        n.phys_y(time);
+    }
     p.phys_y(time);
+    
+    coll(objs, time, p, nested);
+    
+    for o in objs.iter_mut() {
+        o.post_physics();
+    }
+    for n in nested.iter_mut() {
+        n.post_physics();
+    }
+    p.post_physics();
+
+    let mut i: i32 = 0;
+    while (i as usize) < nested.len() {
+        if nested[i as usize].had_col() {
+            let collided = nested.remove(i as usize);
+            Nested::add(collided, objs, nested);
+            i-=1;
+        }
+        i+=1;
+    }
+    let mut i: i32 = 0;
+    while (i as usize) < objs.len() {
+        if objs[i as usize].pr().rect.y > 300.0 {
+            objs.remove(i as usize);
+            i-=1;
+        }
+        i+=1;
+    }
+}
+
+pub fn coll(
+    objs: &mut Vec<Box<dyn Phys>>, time: &f64,
+    p: &mut Player,
+    nested: &mut Vec<Nested>,
+)  {
     collision_checks(objs);
     for o in objs.iter_mut() {
         collision_update(o.as_mut(), p);
     }
-    for o in objs.iter_mut() {
-        o.post_physics();
+    for n in nested.iter_mut() {
+        collision_update(n, p);
     }
-    p.post_physics();
 }
 
 fn collision_checks(objs: &mut Vec<Box<dyn Phys>>) {
@@ -125,3 +189,4 @@ fn collision_checks(objs: &mut Vec<Box<dyn Phys>>) {
         }
     }
 }
+

@@ -27,7 +27,6 @@ impl Camera {
         cam.update_size_ratio();
         cam
     }
-    
 
     pub fn drain_draws(&mut self) -> Drain<TextureDraw> { 
         self.draws.drain(..)
@@ -74,6 +73,40 @@ impl Camera {
     pub fn set_offset(&mut self, offset: Vec2) {
         self.rect.x = offset.x;
         self.rect.y = offset.y;
+    }
+
+    fn calc_offset(cam: f64, current: f64, min: f64, max: f64) -> f64 {
+        if cam > max {
+            return (max/2.0) - min;
+        }
+        let min = min + cam/2.0;
+        let max = min + max - cam/1.0;
+        if current > min && current < max {
+            current
+        } else if current < min {
+            min 
+        } else if current > max {
+            max
+        } else {
+            current
+        }
+    }
+
+    pub fn centre_on_pos(&mut self, p: Vec2, lim: Rect) {
+        let x = Self::calc_offset(
+            self.rect.w,
+            p.x - (self.rect.w/2.0),
+            lim.x - (self.rect.w/2.0),
+            lim.w,
+        );
+        let y = Self::calc_offset(
+            self.rect.h,
+            p.y - (self.rect.h/2.0),
+            lim.y - (self.rect.h/2.0),
+            lim.h
+        );
+        self.rect.x = x;
+        self.rect.y = y;
     }
 
     pub fn get_window_size(&self) -> Vec2 {

@@ -1,12 +1,13 @@
 use geometry::*;
 use super::Colour;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum LastUpdate {
     X,
     Y,
 }
 
+#[derive(Clone, Copy)]
 pub struct PhysRect {
     pub rect: Rect,
     pub s : Vec2,
@@ -129,10 +130,12 @@ pub trait Phys {
     fn post_physics(&mut self) { }
 }
 
+
 pub fn collision_update<A: Phys + ?Sized, B: Phys + ?Sized>(a: &mut A, b: &mut B) {
     if a.pr().rect.colliding(&b.pr().rect) {
+        let a_phys = *a.pr();
         a.collision(b.pr());
-        b.collision(a.pr());
+        b.collision(&a_phys);
     }
 }
 
